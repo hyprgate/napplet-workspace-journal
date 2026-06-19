@@ -8,7 +8,7 @@ export default defineConfig({
     svelte(),
     nip5aManifest({
       nappletType: 'workspace-journal',
-      requires: ['identity', 'ifc', 'storage'],
+      requires: ['identity', 'inc', 'storage', 'theme'],
       artifactMode: 'single-file',
     }),
   ],

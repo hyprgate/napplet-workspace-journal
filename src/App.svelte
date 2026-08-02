@@ -1,7 +1,14 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { inc as ipc } from '@napplet/sdk';
-  import { NOTE_VIEWER_OPEN_TOPIC, WORKSPACE_JOURNAL_CAPTURE_TOPIC, createNoteViewerOpenPayload, parseWorkspaceJournalCapturePayload } from '@hyprgate/utils';
+  import { inc as ipc, intent } from '@napplet/sdk';
+  import { createIntentRequest, parseIntentResult, type IntentRequest } from '@hyprgate/types';
+  import {
+    WORKSPACE_JOURNAL_CAPTURE_TOPIC,
+    createNoteViewerOpenIntentRequest,
+    createNoteViewerOpenPayload,
+    createProfileIntentRequest,
+    parseWorkspaceJournalCapturePayload,
+  } from '@hyprgate/utils';
   import {
     captureJournalEntry,
     createJournalEntry,
@@ -24,8 +31,8 @@
     restoreJournalState().then((restored) => {
       state = restored;
     });
-    const sub = ipc.on(WORKSPACE_JOURNAL_CAPTURE_TOPIC, (payload) => {
-      const capture = parseWorkspaceJournalCapturePayload(payload);
+    const sub = ipc.on(WORKSPACE_JOURNAL_CAPTURE_TOPIC, (event) => {
+      const capture = parseWorkspaceJournalCapturePayload(event.payload);
       if (!capture) return;
       state = captureJournalEntry(state, capture);
       persistJournalState(state);
@@ -55,13 +62,28 @@
     return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   }
 
-  function openRef(ref: string): void {
+  async function invokeNavigation(request: IntentRequest | null): Promise<void> {
+    if (!request) return;
+    try {
+      const result = parseIntentResult(await intent.invoke(request));
+      if (!result || result.archetype !== request.archetype || result.action !== (request.action ?? 'open')) return;
+      if (!result.ok || !result.handled) return;
+    } catch {
+      // Keep the existing no-op behavior when navigation is unavailable.
+    }
+  }
+
+  async function openRef(ref: string): Promise<void> {
     if (ref.startsWith('wss://')) {
-      ipc.emit('relay-browser:inspect', [], JSON.stringify({ relay: ref }));
+      await invokeNavigation(createIntentRequest({
+        archetype: 'relay-browser',
+        action: 'inspect',
+        payload: { relay: ref },
+      }));
       return;
     }
     if (ref.startsWith('npub') || ref.startsWith('nprofile')) {
-      ipc.emit('profile:open', [], JSON.stringify({ pubkey: ref }));
+      await invokeNavigation(createProfileIntentRequest({ pubkey: ref }));
       return;
     }
     const payload = createNoteViewerOpenPayload({
@@ -69,7 +91,7 @@
       source: { napplet: 'workspace-journal' },
       behavior: { focus: true, newWindow: true },
     });
-    if (payload) ipc.emit(NOTE_VIEWER_OPEN_TOPIC, [], JSON.stringify(payload));
+    await invokeNavigation(payload ? createNoteViewerOpenIntentRequest(payload, { behavior: payload.behavior }) : null);
   }
 </script>
 

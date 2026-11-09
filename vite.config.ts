@@ -9,7 +9,7 @@ export default defineConfig({
     svelte(),
     nip5aManifest({
       nappletType: 'workspace-journal',
-      requires: ['identity', 'inc', 'storage'],
+      requires: ['identity', 'inc', 'storage', 'relay', 'resource'],
       optional: ['theme'],
       icon: { data: readFileSync(new URL('./icon.png', import.meta.url)), mimeType: 'image/png' },
       artifactMode: 'single-file',

@@ -30,7 +30,7 @@ export function createInitialJournalState(): JournalState {
 }
 
 export function parseRefs(input: string): string[] {
-  const matches = input.match(/\b(?:n(?:ote|pub|profile|addr)1[023456789acdefghjklmnpqrstuvwxyz]+|wss:\/\/[^\s,;]+)\b/gi) ?? [];
+  const matches = input.match(/\b(?:n(?:ote|event|pub|profile|addr)1[023456789acdefghjklmnpqrstuvwxyz]+|wss:\/\/[^\s,;]+)\b/gi) ?? [];
   return Array.from(new Set(matches.map((ref) => ref.trim())));
 }
 
@@ -51,13 +51,14 @@ export function searchJournalEntries(state: JournalState): JournalEntry[] {
 }
 
 export function selectedJournalEntry(state: JournalState): JournalEntry | null {
-  return state.entries.find((entry) => entry.id === state.selectedId) ?? searchJournalEntries(state)[0] ?? null;
+  const visible = searchJournalEntries(state);
+  return visible.find((entry) => entry.id === state.selectedId) ?? visible[0] ?? null;
 }
 
 export function createJournalEntry(state: JournalState, input: { title: string; body: string; refsText?: string }, now = Date.now()): JournalState {
-  const title = input.title.trim();
   const body = input.body.trim();
-  if (!title || !body) return state;
+  if (!body) return state;
+  const title = input.title.trim() || titleFromBody(body);
   const refs = Array.from(new Set([...parseRefs(body), ...parseRefs(input.refsText ?? '')]));
   const entry: JournalEntry = {
     id: `entry-${now}`,
@@ -72,6 +73,42 @@ export function createJournalEntry(state: JournalState, input: { title: string; 
     entries: [entry, ...state.entries],
     selectedId: entry.id,
   };
+}
+
+/** A title for an entry that wasn't given one: its first line. */
+export function titleFromBody(body: string): string {
+  const line = body.split('\n').map((text) => text.trim()).find(Boolean) ?? '';
+  return line.length > 60 ? `${line.slice(0, 60).trimEnd()}...` : line;
+}
+
+export function updateJournalEntry(
+  state: JournalState,
+  id: string,
+  input: { title: string; body: string; refsText?: string },
+  now = Date.now(),
+): JournalState {
+  const body = input.body.trim();
+  if (!body) return state;
+  const refs = Array.from(new Set([...parseRefs(body), ...parseRefs(input.refsText ?? '')]));
+  return {
+    ...state,
+    entries: normalizeEntries(state.entries.map((entry) => (entry.id === id
+      ? { ...entry, title: input.title.trim() || titleFromBody(body), body, refs, updatedAt: now }
+      : entry))),
+    selectedId: id,
+  };
+}
+
+export function deleteJournalEntry(state: JournalState, id: string): JournalState {
+  return {
+    ...state,
+    entries: state.entries.filter((entry) => entry.id !== id),
+    selectedId: state.selectedId === id ? null : state.selectedId,
+  };
+}
+
+export function restoreJournalEntry(state: JournalState, entry: JournalEntry): JournalState {
+  return { ...state, entries: normalizeEntries([entry, ...state.entries]), selectedId: entry.id };
 }
 
 export function captureJournalEntry(state: JournalState, payload: WorkspaceJournalCapturePayload, now = Date.now()): JournalState {

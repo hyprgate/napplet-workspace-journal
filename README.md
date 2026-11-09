@@ -4,46 +4,27 @@
 > Do not push commits to this standalone napplet repository; direct changes are overwritten by Hyprgate's mirror workflow.
 <!-- HYPRGATE NAPPLET MIRROR NOTICE:END -->
 
-# napplet-workspace-journal
+# Workspace Journal
 
-[![CI](https://github.com/hyprgate/napplet-workspace-journal/actions/workflows/ci.yml/badge.svg)](https://github.com/hyprgate/napplet-workspace-journal/actions/workflows/ci.yml)
+Keep timestamped notes about what you're doing, with links to the notes, people and
+relays involved. Entries live in the app's own shell-mediated storage. Other apps can
+also send entries over the `journal:capture` INC topic.
 
-Forkable source repository for the Hyprgate built-in napplet currently packaged as `@hyprgate/napp-workspace-journal`.
+The source lives in the Hyprgate monorepo at `napplets/workspace-journal`. The standalone
+`hyprgate/napplet-workspace-journal` repository is a generated, read-only mirror, so send
+changes to [hyprgate/web](https://github.com/hyprgate/web).
 
-This repository was split from `hyprgate/gui` and is mounted back into the parent checkout as `napplets/workspace-journal`.
-It still expects the parent workspace when built through Hyprgate because shared `@hyprgate/*` packages remain workspace dependencies.
+## Developing
 
-## Parent checkout
+Run these from the root of a Hyprgate checkout so workspace dependencies resolve:
 
 ```bash
-git clone --recurse-submodules git@github.com:hyprgate/gui.git
-cd gui
 pnpm install --frozen-lockfile
-pnpm --filter @hyprgate/napp-workspace-journal build
+pnpm --filter ./napplets/workspace-journal paja        # Kehto Paja plus the Vite dev server
+pnpm --filter ./napplets/workspace-journal test
+pnpm --filter ./napplets/workspace-journal type-check
+pnpm --filter ./napplets/workspace-journal conformance # builds, then checks dist/
 ```
 
-## Paja runtime
-
-```bash
-pnpm --filter @hyprgate/napp-workspace-journal paja
-```
-
-This starts Kehto Paja and the napplet's Vite dev server together, using
-the port configured in `vite.config.ts`.
-
-## Testing
-
-Run these checks from a Hyprgate parent checkout so workspace dependencies resolve:
-
-```bash
-git clone --recurse-submodules git@github.com:hyprgate/gui.git
-cd gui
-pnpm install --frozen-lockfile
-pnpm --filter @hyprgate/napp-workspace-journal conformance
-pnpm --filter @hyprgate/napp-workspace-journal test
-pnpm --filter @hyprgate/napp-workspace-journal build
-```
-
-The `conformance` script builds the napplet and runs `@napplet/conformance-cli` against `dist/`. CI runs the same conformance, unit test, and build checks for every push and pull request.
-
-CI runs from the standalone napplet repository but checks out `hyprgate/gui` to resolve private `workspace:*` packages. Configure `HYPRGATE_GUI_CHECKOUT_TOKEN` with read access to `hyprgate/gui` before enabling GitHub Actions.
+Forms never submit under the `allow-scripts` sandbox, so use a button `onclick` and
+handle Enter on the input.
